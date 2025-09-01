@@ -62,45 +62,47 @@ export default function PlantDiseaseApp() {
     }
   }
 
-  const handleSubmit = async () => {
+
+const handleSubmit = async () => {
   if (!selectedImage) {
-    setError('Please select an image first')
-    return
+    setError('Please select an image first');
+    return;
   }
 
-  setIsLoading(true)
-  setError(null)
+  setIsLoading(true);
+  setError(null);
+  setPrediction(null); // Clear previous prediction
 
   try {
-    const formData = new FormData()
-    formData.append('image', selectedImage)
+    const formData = new FormData();
+    formData.append('image', selectedImage);
 
     const response = await axios.post(
-      'http://127.0.0.1:5000/predict', // Flask backend
+      'http://127.0.0.1:5000/predict', // Your Flask backend URL
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
 
-    // Parse HF Space response
-    const hfData = response.data?.data?.[0]  // Gradio API returns array under "data"
-    if (hfData) {
-      const entries = Object.entries(hfData) as [string, number][]
-      entries.sort(([, a], [, b]) => b - a)
-      setPrediction({
-        predicted_class: entries[0][0],
-        confidence: entries[0][1] * 100,
-        all_predictions: Object.fromEntries(entries.map(([k, v]) => [k, v * 100]))
-      })
+    if (response.data && response.data.predicted_class) {
+      setPrediction(response.data);
     } else {
-      setError('Invalid response from model')
+      // If the backend returned an error, it will be in response.data.error
+      setError(response.data.error || 'An unknown error occurred.');
     }
+
   } catch (err) {
-    console.error('Prediction error:', err)
-    setError('Failed to get prediction. Please try again.')
+    console.error('Prediction error:', err);
+    // Handle network errors or if the backend is down
+    const errorMessage =  'Failed to get prediction. Is the server running?';
+    setError(errorMessage);
   } finally {
-    setIsLoading(false)
+    setIsLoading(false);
   }
-}
+};
 
 
   const resetApp = () => {
@@ -300,7 +302,7 @@ export default function PlantDiseaseApp() {
                             outerRadius={80}
                             paddingAngle={5}
                             dataKey="value"
-                            label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                            label={({ name, value }) => `${name}: ${typeof value === 'number' ? value.toFixed(1) : '0.0'}%`}
                           >
                             {chartData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -358,7 +360,7 @@ export default function PlantDiseaseApp() {
                     onClick={() => router.push('/output')}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    View Detailed Results (Temp)
+                    View Detailed Results
                   </Button>
                 </CardContent>
               </Card>
