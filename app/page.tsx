@@ -35,7 +35,8 @@ const tabs = [
 
 type TabType = 'home' | 'expert' | 'history' | 'guide' | 'profile'
 
-export default function PlantDiseaseApp() {
+export default function PlantDiseaseApp() 
+{
   const [activeTab, setActiveTab] = useState<TabType>('home')
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -46,7 +47,8 @@ export default function PlantDiseaseApp() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => 
+    {
     const file = event.target.files?.[0]
     if (file) {
       setSelectedImage(file)
@@ -63,49 +65,47 @@ export default function PlantDiseaseApp() {
   }
 
 
-const handleSubmit = async () => {
-  if (!selectedImage) {
-    setError('Please select an image first');
-    return;
-  }
-
-  setIsLoading(true);
-  setError(null);
-  setPrediction(null); // Clear previous prediction
-
-  try {
-    const formData = new FormData();
-    formData.append('image', selectedImage);
-
-    const response = await axios.post(
-      'http://127.0.0.1:5000/predict', // Your Flask backend URL
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-
-    if (response.data && response.data.predicted_class) {
-      setPrediction(response.data);
-    } else {
-      // If the backend returned an error, it will be in response.data.error
-      setError(response.data.error || 'An unknown error occurred.');
+  const handleSubmit = async () => 
+  {
+    if (!selectedImage) {
+      setError('Please select an image first');
+      return;
     }
 
-  } catch (err) {
-    console.error('Prediction error:', err);
-    // Handle network errors or if the backend is down
-    const errorMessage =  'Failed to get prediction. Is the server running?';
-    setError(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    setError(null);
+    setPrediction(null); // Clear previous prediction
 
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
 
-  }
+      const response = await axios.post(
+        'http://127.0.0.1:5000/predict', // Your Flask backend URL
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.data && response.data.predicted_class) {
+        setPrediction(response.data);
+      } else {
+        // If the backend returned an error, it will be in response.data.error
+        setError(response.data.error || 'An unknown error occurred.');
+      }
+
+    } catch (err) {
+      console.error('Prediction error:', err);
+      // Handle network errors or if the backend is down
+      const errorMessage = 'Failed to get prediction. Is the server running?';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }; // This is the correct closing curly brace for handleSubmit
   const resetApp = () => {
     setSelectedImage(null)
     setImagePreview(null)
@@ -130,7 +130,8 @@ const handleSubmit = async () => {
     }
   ] : []
 
-  const renderContent = () => {
+  const renderContent = () =>
+  {
     switch (activeTab) {
       case 'home':
         return (
@@ -335,9 +336,23 @@ const handleSubmit = async () => {
                   </Button>
 
                   {/* Add this temporary button */}
-                  <Button
+                  {/* <Button
                     onClick={() => router.push('/output')}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    View Detailed Results
+                  </Button> */}
+                  <Button
+                  onClick={() => {
+                    // Only navigate if prediction data is available
+                    if (prediction) {
+                      // Encode the prediction data as a JSON string
+                      const predictionData = encodeURIComponent(JSON.stringify(prediction));
+                      // Navigate to the /output page with the data in the URL
+                      router.push(`/output?data=${predictionData}`);
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     View Detailed Results
                   </Button>
@@ -395,3 +410,4 @@ const handleSubmit = async () => {
     </div>
   )
 }
+

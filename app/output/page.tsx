@@ -1,25 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Leaf, AlertTriangle, CheckCircle, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-
-interface PredictionData {
-  predicted_class: string
-  confidence: number
-  image_url?: string
+interface PredictionResult {
+    predicted_class: string;
+    confidence: number;
+    all_predictions?: { [key: string]: number };
 }
-
 export default function OutputPage() {
-  // Sample data - in real app this would come from props or API
-  const predictionData: PredictionData = {
-    predicted_class: "Pepper__bell___Bacterial_spot",
-    confidence: 99.30,
-    image_url: "/sample-pepper-disease.jpg"
-  }
+  const searchParams = useSearchParams();
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+
+    useEffect(() => {
+        const encodedData = searchParams.get('data');
+        if (encodedData) {
+            try {
+                const decodedData = decodeURIComponent(encodedData);
+                const parsedData: PredictionResult = JSON.parse(decodedData);
+                setPrediction(parsedData);
+            } catch (e) {
+                console.error("Failed to parse prediction data from URL:", e);
+            }
+        }
+    }, [searchParams]);
+
+    if (!prediction) {
+        return <div>Loading or no data available...</div>;
+    }
 
   // Format the disease name for display
   const formatDiseaseName = (name: string) => {
@@ -79,17 +91,7 @@ export default function OutputPage() {
           </div>
         </div>
 
-        {/* Image Preview */}
-        <Card>
-          <CardContent className="p-4">
-            <img
-              src="/pepper-bacterial-spot.png"
-              alt="Analyzed plant"
-              className="w-full h-64 object-cover rounded-lg"
-            />
-          </CardContent>
-        </Card>
-
+      
         {/* Prediction Results */}
         <Card>
           <CardHeader>
@@ -105,12 +107,12 @@ export default function OutputPage() {
                 Predicted Class:
               </h3>
               <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg font-medium text-lg">
-                {formatDiseaseName(predictionData.predicted_class)}
+                {formatDiseaseName(prediction.predicted_class)}
               </div>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-300">Confidence:</span>
                 <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                  {predictionData.confidence.toFixed(2)}%
+                  {prediction.confidence.toFixed(2)}%
                 </Badge>
               </div>
             </div>
@@ -125,10 +127,10 @@ export default function OutputPage() {
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-8 relative overflow-hidden">
                 <div 
                   className="bg-gradient-to-r from-green-500 to-green-600 h-8 rounded-full flex items-center justify-center transition-all duration-1000 ease-out"
-                  style={{ width: `${predictionData.confidence}%` }}
+                  style={{ width: `${prediction.confidence}%` }}
                 >
                   <span className="text-white text-sm font-medium">
-                    {predictionData.confidence.toFixed(2)}%
+                    {prediction.confidence.toFixed(2)}%
                   </span>
                 </div>
               </div>
@@ -141,7 +143,7 @@ export default function OutputPage() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Confidence</span>
                   </div>
                   <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    {predictionData.confidence.toFixed(2)}%
+                    {prediction.confidence.toFixed(2)}%
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">High Accuracy</p>
                 </div>
@@ -152,7 +154,7 @@ export default function OutputPage() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Uncertainty</span>
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {(100 - predictionData.confidence).toFixed(2)}%
+                    {(100 - prediction.confidence).toFixed(2)}%
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Low Risk</p>
                 </div>
