@@ -62,44 +62,48 @@ export default function PlantDiseaseApp() {
     }
   }
 
-  const handleSubmit = async () => {
+
+const handleSubmit = async () => {
   if (!selectedImage) {
-    setError('Please select an image first')
-    return
+    setError('Please select an image first');
+    return;
   }
 
-  setIsLoading(true)
-  setError(null)
+  setIsLoading(true);
+  setError(null);
+  setPrediction(null); // Clear previous prediction
 
-  // try {
-    const formData = new FormData()
-    formData.append('image', selectedImage)
+  try {
+    const formData = new FormData();
+    formData.append('image', selectedImage);
 
     const response = await axios.post(
-      'http://127.0.0.1:5000/predict', // Flask backend
+      'http://127.0.0.1:5000/predict', // Your Flask backend URL
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
 
-// Directly use the data from your Flask backend
-const predictionData = response.data;
-if (predictionData && predictionData.predicted_class) {
-    setPrediction({
-        predicted_class: predictionData.predicted_class,
-        confidence: predictionData.confidence,
-        all_predictions: predictionData.all_predictions
-    });
-} else {
-    setError('Invalid response from backend');
-}
-/*
+    if (response.data && response.data.predicted_class) {
+      setPrediction(response.data);
+    } else {
+      // If the backend returned an error, it will be in response.data.error
+      setError(response.data.error || 'An unknown error occurred.');
+    }
+
   } catch (err) {
-    console.error('Prediction error:', err)
-    setError('Failed to get prediction. Please try again.')
+    console.error('Prediction error:', err);
+    // Handle network errors or if the backend is down
+    const errorMessage =  'Failed to get prediction. Is the server running?';
+    setError(errorMessage);
   } finally {
-    setIsLoading(false)
+    setIsLoading(false);
   }
-}*/
+};
+
 
   }
   const resetApp = () => {
@@ -192,28 +196,6 @@ if (predictionData && predictionData.predicted_class) {
                 )}
               </CardContent>
             </Card>
-{/*
-            temporary session
-            <Card className="border-2 border-dashed border-blue-300 bg-blue-50 dark:bg-blue-900/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                  <AlertCircle className="h-5 w-5" />
-                  Test Mode
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-blue-600 dark:text-blue-300 mb-4">
-                  Access the detailed results page directly for testing purposes
-                </p>
-                <Button
-                  onClick={() => router.push('/output')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  View Sample Results Page
-                </Button>
-              </CardContent>
-            </Card>
-          */}
             {/* Image Preview */}
             {imagePreview && (
               <Card>
@@ -299,7 +281,7 @@ if (predictionData && predictionData.predicted_class) {
                             outerRadius={80}
                             paddingAngle={5}
                             dataKey="value"
-                            label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                            label={({ name, value }) => `${name}: ${typeof value === 'number' ? value.toFixed(1) : '0.0'}%`}
                           >
                             {chartData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -357,7 +339,7 @@ if (predictionData && predictionData.predicted_class) {
                     onClick={() => router.push('/output')}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    View Detailed Results (Temp)
+                    View Detailed Results
                   </Button>
                 </CardContent>
               </Card>
@@ -412,4 +394,4 @@ if (predictionData && predictionData.predicted_class) {
       </div>
     </div>
   )
-  }
+}
