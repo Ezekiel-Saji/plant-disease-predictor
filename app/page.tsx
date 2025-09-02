@@ -71,7 +71,7 @@ export default function PlantDiseaseApp() {
   setIsLoading(true)
   setError(null)
 
-  try {
+  // try {
     const formData = new FormData()
     formData.append('image', selectedImage)
 
@@ -81,28 +81,27 @@ export default function PlantDiseaseApp() {
       { headers: { 'Content-Type': 'multipart/form-data' } }
     )
 
-    // Parse HF Space response
-    const hfData = response.data?.data?.[0]  // Gradio API returns array under "data"
-    if (hfData) {
-      const entries = Object.entries(hfData) as [string, number][]
-      entries.sort(([, a], [, b]) => b - a)
-      setPrediction({
-        predicted_class: entries[0][0],
-        confidence: entries[0][1] * 100,
-        all_predictions: Object.fromEntries(entries.map(([k, v]) => [k, v * 100]))
-      })
-    } else {
-      setError('Invalid response from model')
-    }
+// Directly use the data from your Flask backend
+const predictionData = response.data;
+if (predictionData && predictionData.predicted_class) {
+    setPrediction({
+        predicted_class: predictionData.predicted_class,
+        confidence: predictionData.confidence,
+        all_predictions: predictionData.all_predictions
+    });
+} else {
+    setError('Invalid response from backend');
+}
+/*
   } catch (err) {
     console.error('Prediction error:', err)
     setError('Failed to get prediction. Please try again.')
   } finally {
     setIsLoading(false)
   }
-}
+}*/
 
-
+  }
   const resetApp = () => {
     setSelectedImage(null)
     setImagePreview(null)
@@ -413,4 +412,4 @@ export default function PlantDiseaseApp() {
       </div>
     </div>
   )
-}
+  }
