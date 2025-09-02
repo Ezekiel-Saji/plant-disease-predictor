@@ -1,91 +1,32 @@
-# from flask import Flask, request, jsonify
-# import requests
-# import base64
-
-# app = Flask(__name__)
-
-# # Hugging Face Space API endpoint
-# HF_API_URL = "https://ezekielsaji-plantdiseases.hf.space/api/predict/"
-
-# @app.route("/predict", methods=["POST"])
-# def predict():
-#     if "image" not in request.files:
-#         return jsonify({"error": "No image uploaded"}), 400
-
-#     # Read image and convert to base64
-#     img_bytes = request.files["image"].read()
-#     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-#     payload = {"data": [f"data:image/png;base64,{img_b64}"]}
-#     try:
-#         # Call HF Space Gradio API
-#         hf_response = requests.post(HF_API_URL, json=payload)
-#         hf_response.raise_for_status()
-#         hf_json = hf_response.json()
-#         print("📤 HF RAW RESPONSE:", hf_json)
-#         # Parse Gradio output
-#         # Gradio returns: {"data":[{"disease1":0.8, "disease2":0.15, ...}]}
-#         hf_data = hf_json.get("data", [{}])[0]
-
-#         if not hf_data:
-#             return jsonify({"error": "Invalid response from model"}), 500
-
-#         # Sort predictions by confidence
-#         sorted_preds = sorted(hf_data.items(), key=lambda x: x[1], reverse=True)
-
-#         top_pred = sorted_preds[0]
-#         all_preds_top5 = dict(sorted_preds[:5])
-
-#         # Convert confidence to percentage
-#         result = {
-#             "predicted_class": top_pred[0],
-#             "confidence": float(top_pred[1]) * 100,
-#             "all_predictions": {k: float(v) * 100 for k, v in all_preds_top5.items()}
-#         }
-
-#         return jsonify(result)
-
-#     except requests.exceptions.RequestException as e:
-#         print("❌ ERROR:", e)
-#         return jsonify({"error": str(e)}), 500
-    
-
-# if __name__ == "__main__":
-#     app.run(host="127.0.0.1", port=5000, debug=True)
-
-
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from gradio_client import Client, file
 import os
+import re
 import uuid # To create unique filenames
-
+import json # Add this line
+import google.generativeai as genai
+from dotenv import load_dotenv
+load_dotenv() 
 app = Flask(__name__)
 CORS(app)
 
-# --- THE DEFINITIVE FIX ---
-# We will use the official Gradio Python client.
-# This is the most reliable way to connect to any HF Space,
-# as it does not depend on the unpredictable REST API endpoints.
-# It finds the correct API name and function to call automatically.
-try:
-    print("Initializing Gradio client...")
-    client = Client("ezekielsaji/plantdiseases")
-    print("Gradio client initialized successfully.")
-except Exception as e:
-    # This will catch errors if the space is down on startup.
-    print(f"FATAL: Failed to initialize Gradio client: {e}")
-    client = None
-
-# Create a temporary directory for file handling
-TEMP_DIR = "temp_uploads"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
-
-
-
 @app.route("/predict", methods=["POST"])
 def predict():
+    #using the official Gradio Python client.
+    try:
+        print("Initializing Gradio client...")
+        client = Client("ezekielsaji/plantdiseases")
+        print("Gradio client initialized successfully.")
+    except Exception as e:
+        # This will catch errors if the space is down on startup.
+        print(f"FATAL: Failed to initialize Gradio client: {e}")
+        client = None
+
+    # Create a temporary directory for file handling
+    TEMP_DIR = "temp_uploads"
+    if not os.path.exists(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
     # Check if the client was initialized correctly on startup
     if not client:
         return jsonify({"error": "Gradio client is not available. Check server startup logs."}), 503
@@ -143,6 +84,59 @@ def predict():
         # IMPORTANT: Clean up the temporary file after we're done with it.
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
+@app.route("/get-disease-info", methods=["POST"])
+def get_disease_info():
+    # Configure the Google Gemini API key
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    print("is called")
+    # Create a Generative Model instance
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    data = request.json
+    disease_name = data.get("disease_name")
+    print("is called")
+    if not disease_name:
+        return jsonify({"error": "No disease name provided"}), 400
+
+    prompt = f"""
+    You are a plant disease expert. Provide a concise response about '{disease_name}'.
+    Format the information as a JSON object with the following keys:
+    'description' (string): A short description of the disease.
+    'causes' (list of strings): A list of the main causes of the disease.
+    'symptoms' (list of strings): A list of key symptoms.
+    'treatment' (list of strings): A list of treatment or management methods.
+    Do not include any extra text outside the JSON object.
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        gemini_response_text = response.text
+        
+        # Use a regular expression to find the JSON object within the text
+        # The `re.DOTALL` flag allows the `.` to match newlines
+        match = re.search(r'\{.*\}', gemini_response_text, re.DOTALL)
+        
+        if not match:
+            # If no JSON object is found, it's an error
+            print(f"Gemini did not return a valid JSON object. Response: {gemini_response_text}")
+            return jsonify({"error": "Gemini response did not contain the expected JSON format."}), 500
+
+        # Extract the matched JSON string
+        json_string = match.group(0)
+
+        # Parse the extracted JSON string
+        disease_info = json.loads(json_string)
+        return jsonify(disease_info)
+
+    except json.JSONDecodeError as e:
+        # Catch a specific error for better debugging
+        print(f"JSON parsing failed: {e}")
+        print(f"Attempted to parse: {json_string}") # This helps debug the bad string
+        return jsonify({"error": "Failed to parse Gemini response as JSON."}), 500
+    except Exception as e:
+        # A general catch-all for other unexpected errors
+        print(f"Error calling Gemini API: {e}")
+        return jsonify({"error": "An unexpected error occurred."}), 500
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
