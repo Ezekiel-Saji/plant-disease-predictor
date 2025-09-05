@@ -229,14 +229,11 @@ export default function OutputPage() {
                             <div className="text-sm text-center text-gray-500">
                                 No detailed information available.
                             </div>
-                        )}
-                        
+                        )}                     
                               
                     </CardContent>
                 </Card>
-                
-
-            </div>
+              </div>
         </div>
     );
 }
