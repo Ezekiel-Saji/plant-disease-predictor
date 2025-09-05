@@ -12,6 +12,8 @@ export function LoadingSpinner({ size = 'md', text }: LoadingSpinnerProps) {
     lg: 'h-8 w-8'
   }
 
+  
+
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       <Loader2 className={`${sizeClasses[size]} animate-spin text-green-600`} />

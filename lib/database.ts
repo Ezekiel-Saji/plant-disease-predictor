@@ -7,6 +7,7 @@ export interface DatabaseConfig {
   password: string
 }
 
+
 // Database table schemas
 export const schemas = {
   users: `
