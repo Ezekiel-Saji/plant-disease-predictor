@@ -210,6 +210,8 @@ export default function PlantDiseaseApp()
                       alt="Selected plant"
                       className="w-full h-64 object-cover rounded-lg"
                     />
+
+                    
                   </div>
                   
                   <div className="flex gap-3 mt-4">
